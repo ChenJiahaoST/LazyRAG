@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 import re
 import requests
 
@@ -18,6 +18,7 @@ class Qwen3Rerank(LazyLLMOnlineRerankModuleBase):
 
     _QUERY_TEMPLATE = '{prefix}<Instruct>: {instruction}\n<Query>: {query}\n'
     _DOCUMENT_TEMPLATE = '<Document>: {doc}{suffix}'
+    _LOCAL_ONLY_PAYLOAD_KEYS = frozenset(('query', 'documents', 'template', 'top_n', 'top_k', 'topk'))
 
     _LOCAL_TRUNCATE_MAX_CHARS = 16384
     _DEFAULT_TASK_DESCRIPTION = 'Given a web search query, retrieve relevant passages that answer the query'
@@ -68,12 +69,44 @@ class Qwen3Rerank(LazyLLMOnlineRerankModuleBase):
         }
 
     def _extract_top_k(self, total: int, **kwargs: Any) -> int:
-        top_k = kwargs.get('top_k', kwargs.get('topk', total))
+        top_k = kwargs.get('top_n', kwargs.get('top_k', kwargs.get('topk', total)))
         try:
             top_k = int(top_k)
         except Exception:
             top_k = total
         return max(0, min(top_k, total))
+
+    def _score_texts(self, query: str, texts: List[str], **kwargs: Any) -> List[float]:
+        if not texts:
+            return []
+
+        all_scores: List[float] = []
+        for start in range(0, len(texts), self._batch_size):
+            batch_texts = texts[start:start + self._batch_size]
+            payload = self._encapsulated_data(query, batch_texts, **kwargs)
+
+            try:
+                resp = self._session.post(
+                    self._url, json=payload, headers=self._headers, timeout=self._timeout
+                )
+                resp.raise_for_status()
+                scores = self._parse_response(resp.json())
+            except requests.RequestException as exc:
+                LOG.error('HTTP request for reranking failed (this batch will be scored as 0): %s', exc)
+                scores = []
+
+            if len(scores) != len(batch_texts):
+                LOG.warning(
+                    'Returned scores count mismatches inputs: got=%d, expected=%d; padding with zeros.',
+                    len(scores), len(batch_texts),
+                )
+                if len(scores) < len(batch_texts):
+                    scores += [0.0] * (len(batch_texts) - len(scores))
+                else:
+                    scores = scores[:len(batch_texts)]
+
+            all_scores.extend(scores)
+        return all_scores
 
     def _get_format_content(self, nodes: List[DocNode], **kwargs: Any) -> List[str]:
         template: Optional[str] = dict(kwargs).pop('template', None)
@@ -132,9 +165,15 @@ class Qwen3Rerank(LazyLLMOnlineRerankModuleBase):
         }
         if kwargs:
             for k, v in kwargs.items():
-                if k not in ('query', 'documents'):
+                if k not in self._LOCAL_ONLY_PAYLOAD_KEYS:
                     payload[k] = v
         return payload
+
+    def _warn_on_empty_query(self, query: str) -> str:
+        normalized_query = '' if query is None else str(query)
+        if not normalized_query:
+            LOG.warning('Qwen3Rerank received an empty query. Check caller input and reranker binding.')
+        return normalized_query
 
     def _parse_response(self, response: Any) -> List[float]:
         """
@@ -153,42 +192,54 @@ class Qwen3Rerank(LazyLLMOnlineRerankModuleBase):
             LOG.error('Failed to parse response: %s; response=%r', exc, response)
             return []
 
-    def forward(self, nodes: List[DocNode], query: str, **kwargs: Any) -> List[DocNode]:
+    def _rerank_nodes(self, nodes: List[DocNode], query: str, **kwargs: Any) -> List[DocNode]:
         if not nodes:
             return []
 
+        query = self._warn_on_empty_query(query)
         texts = self._get_format_content(nodes, **kwargs)
         top_k = self._extract_top_k(len(texts), **kwargs)
-
-        all_scores: List[float] = []
-        for start in range(0, len(texts), self._batch_size):
-            batch_texts = texts[start:start + self._batch_size]
-            payload = self._encapsulated_data(query, batch_texts, **kwargs)
-
-            try:
-                resp = self._session.post(
-                    self._url, json=payload, headers=self._headers, timeout=self._timeout
-                )
-                resp.raise_for_status()
-                scores = self._parse_response(resp.json())
-            except requests.RequestException as exc:
-                LOG.error('HTTP request for reranking failed (this batch will be scored as 0): %s', exc)
-                scores = []
-
-            if len(scores) != len(batch_texts):
-                LOG.warning(
-                    'Returned scores count mismatches inputs: got=%d, expected=%d; padding with zeros.',
-                    len(scores), len(batch_texts),
-                )
-                if len(scores) < len(batch_texts):
-                    scores += [0.0] * (len(batch_texts) - len(scores))
-                else:
-                    scores = scores[:len(batch_texts)]
-
-            all_scores.extend(scores)
-
+        all_scores = self._score_texts(query, texts, **kwargs)
         scored_nodes: List[DocNode] = [nodes[i].with_score(all_scores[i]) for i in range(len(nodes))]
         scored_nodes.sort(key=lambda n: n.relevance_score, reverse=True)
         results = scored_nodes[:top_k] if top_k > 0 else scored_nodes
         LOG.debug(f'Rerank use `{self._embed_model_name}` and get nodes: {results}')
         return results
+
+    def _rerank_documents(
+        self, query: str, documents: List[str], **kwargs: Any
+    ) -> List[Tuple[int, float]]:
+        if not documents:
+            return []
+
+        query = self._warn_on_empty_query(query)
+        texts = [doc if isinstance(doc, str) else str(doc or '') for doc in documents]
+        top_k = self._extract_top_k(len(texts), **kwargs)
+        all_scores = self._score_texts(query, texts, **kwargs)
+        scored_indices = [(index, all_scores[index]) for index in range(len(texts))]
+        scored_indices.sort(key=lambda item: item[1], reverse=True)
+        results = scored_indices[:top_k] if top_k > 0 else scored_indices
+        LOG.debug(f'Rerank use `{self._embed_model_name}` and get indices: {results}')
+        return results
+
+    def forward(self, *args: Any, **kwargs: Any) -> Union[List[DocNode], List[Tuple[int, float]]]:
+        if not args:
+            raise TypeError('Qwen3Rerank.forward() missing required positional argument')
+
+        first_arg = args[0]
+        if isinstance(first_arg, list) and not first_arg:
+            return []
+
+        if isinstance(first_arg, list) and isinstance(first_arg[0], DocNode):
+            query = args[1] if len(args) > 1 else kwargs.pop('query', '')
+            return self._rerank_nodes(first_arg, query, **kwargs)
+
+        if isinstance(first_arg, list):
+            query = args[1] if len(args) > 1 else kwargs.pop('query', '')
+            return self._rerank_documents(query, first_arg, **kwargs)
+
+        query = first_arg
+        documents = kwargs.pop('documents', args[1] if len(args) > 1 else None)
+        if documents is None:
+            raise TypeError('Qwen3Rerank.forward() missing required argument: `documents`')
+        return self._rerank_documents(query, documents, **kwargs)
