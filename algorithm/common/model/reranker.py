@@ -18,7 +18,9 @@ class Qwen3Rerank(LazyLLMOnlineRerankModuleBase):
 
     _QUERY_TEMPLATE = '{prefix}<Instruct>: {instruction}\n<Query>: {query}\n'
     _DOCUMENT_TEMPLATE = '<Document>: {doc}{suffix}'
-    _LOCAL_ONLY_PAYLOAD_KEYS = frozenset(('query', 'documents', 'template', 'top_n', 'top_k', 'topk'))
+    _LOCAL_ONLY_PAYLOAD_KEYS = frozenset((
+        'query', 'documents', 'nodes', 'template', 'top_n', 'top_k', 'topk', 'timeout', 'request_timeout'
+    ))
 
     _LOCAL_TRUNCATE_MAX_CHARS = 16384
     _DEFAULT_TASK_DESCRIPTION = 'Given a web search query, retrieve relevant passages that answer the query'
@@ -202,7 +204,7 @@ class Qwen3Rerank(LazyLLMOnlineRerankModuleBase):
         all_scores = self._score_texts(query, texts, **kwargs)
         scored_nodes: List[DocNode] = [nodes[i].with_score(all_scores[i]) for i in range(len(nodes))]
         scored_nodes.sort(key=lambda n: n.relevance_score, reverse=True)
-        results = scored_nodes[:top_k] if top_k > 0 else scored_nodes
+        results = scored_nodes[:top_k]
         LOG.debug(f'Rerank use `{self._embed_model_name}` and get nodes: {results}')
         return results
 
@@ -218,12 +220,20 @@ class Qwen3Rerank(LazyLLMOnlineRerankModuleBase):
         all_scores = self._score_texts(query, texts, **kwargs)
         scored_indices = [(index, all_scores[index]) for index in range(len(texts))]
         scored_indices.sort(key=lambda item: item[1], reverse=True)
-        results = scored_indices[:top_k] if top_k > 0 else scored_indices
+        results = scored_indices[:top_k]
         LOG.debug(f'Rerank use `{self._embed_model_name}` and get indices: {results}')
         return results
 
     def forward(self, *args: Any, **kwargs: Any) -> Union[List[DocNode], List[Tuple[int, float]]]:
         if not args:
+            if 'nodes' in kwargs:
+                nodes = kwargs.pop('nodes')
+                query = kwargs.pop('query', '')
+                return self._rerank_nodes(nodes, query, **kwargs)
+            if 'documents' in kwargs:
+                documents = kwargs.pop('documents')
+                query = kwargs.pop('query', '')
+                return self._rerank_documents(query, documents, **kwargs)
             raise TypeError('Qwen3Rerank.forward() missing required positional argument')
 
         first_arg = args[0]
