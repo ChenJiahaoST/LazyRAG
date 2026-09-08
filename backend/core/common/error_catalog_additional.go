@@ -671,6 +671,18 @@ func init() {
 	registerAdditionalError("failed to start history run", http.StatusConflict, 2002371)
 	registerAdditionalError("editable block unavailable or changed; refresh and retry", http.StatusConflict, 2002372)
 	registerAdditionalError("inspect chat source attachment", http.StatusInternalServerError, 2002373)
+	registerAdditionalError("text is required", http.StatusBadRequest, 2002374)
+	registerAdditionalError("text exceeds 5000 characters", http.StatusBadRequest, 2002375)
+	registerAdditionalError("translation service is not configured", http.StatusPreconditionFailed, 2002376)
+	registerAdditionalError("unsupported translation provider", http.StatusBadRequest, 2002377)
+	registerAdditionalError("invalid translation credentials", http.StatusPreconditionFailed, 2002378)
+	registerAdditionalError("SecretId and SecretKey are required", http.StatusPreconditionFailed, 2002379)
+	registerAdditionalError("invalid Tencent translation endpoint", http.StatusBadRequest, 2002380)
+	registerAdditionalErrorPattern("Tencent translation request failed: %w", "Tencent translation request failed", http.StatusBadGateway, 2002381)
+	registerAdditionalErrorAlias("Tencent translation request failed", "Tencent translation request failed", http.StatusBadGateway, 2002381)
+	registerAdditionalErrorPattern("Tencent translation returned HTTP %d", "Tencent translation returned an invalid response", http.StatusBadGateway, 2002382)
+	registerAdditionalErrorPattern("Tencent translation failed: %s", "Tencent translation failed", http.StatusBadGateway, 2002383)
+	registerAdditionalErrorAlias("Tencent translation failed", "Tencent translation failed", http.StatusBadGateway, 2002383)
 }
 
 func registerAdditionalError(message string, status, code int) {
