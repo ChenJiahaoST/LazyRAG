@@ -5,6 +5,14 @@ package common
 import "net/http"
 
 func init() {
+	registerAdditionalErrorAlias("invalid title", "Invalid request", http.StatusBadRequest, 2000103)
+	registerAdditionalErrorAlias("conversation changed", "Conflict", http.StatusConflict, 2000107)
+	registerAdditionalErrorAlias("update backfill failed", "Internal server error", http.StatusInternalServerError, 2000000)
+	registerAdditionalErrorAlias("reconcile metadata state failed", "Internal server error", http.StatusInternalServerError, 2000000)
+	registerAdditionalErrorAlias("rename conversation failed", "Internal server error", http.StatusInternalServerError, 2000000)
+	registerAdditionalErrorAlias("opening call budget exhausted or seed replaced", "Conflict", http.StatusConflict, 2000107)
+	registerAdditionalErrorAlias("retry with default model", "Internal server error", http.StatusInternalServerError, 2000000)
+	registerAdditionalErrorAlias("conversation opening model failed", "Internal server error", http.StatusInternalServerError, 2000000)
 	registerAdditionalErrorAlias("invalid chat model selection", "Invalid request", http.StatusBadRequest, 2000103)
 	registerAdditionalErrorAlias("conversation model selection changed", "Conflict", http.StatusConflict, 2000107)
 	registerAdditionalErrorAlias("conversation is busy", "Conflict", http.StatusConflict, 2000107)
@@ -635,4 +643,5 @@ func init() {
 	registerAdditionalError("create preference organizer task failed", http.StatusInternalServerError, 2002362)
 	registerAdditionalError("query preference organizer task failed", http.StatusInternalServerError, 2002363)
 	registerAdditionalError("preference organizer task lease was lost", http.StatusInternalServerError, 2002364)
+	registerAdditionalError("async job lease lost", http.StatusInternalServerError, 2002384)
 }

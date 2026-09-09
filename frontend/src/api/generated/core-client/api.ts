@@ -338,6 +338,27 @@ export interface Algo {
 export interface AllDatasetTagsResponse {
     'tags'?: Array<string>;
 }
+export interface ApiCoreConversationsMetadataBackfillPostRequest {
+    'action': ApiCoreConversationsMetadataBackfillPostRequestActionEnum;
+}
+
+export const ApiCoreConversationsMetadataBackfillPostRequestActionEnum = {
+    Start: 'start',
+    Pause: 'pause',
+    Resume: 'resume',
+    Retry: 'retry'
+} as const;
+
+export type ApiCoreConversationsMetadataBackfillPostRequestActionEnum = typeof ApiCoreConversationsMetadataBackfillPostRequestActionEnum[keyof typeof ApiCoreConversationsMetadataBackfillPostRequestActionEnum];
+
+export interface ApiCoreConversationsNameTitlePatch200Response {
+    'display_name'?: string;
+    'title_revision'?: number;
+}
+export interface ApiCoreConversationsNameTitlePatchRequest {
+    'display_name': string;
+    'title_revision': number;
+}
 export interface ApiCoreKbGrantPrincipalsGet200Response {
     'code'?: number;
     'data'?: ListGrantPrincipalsResponse;
@@ -849,6 +870,7 @@ export interface ConversationDetailItem {
     'fork_origin'?: ConversationForkOrigin | null;
     'has_fork_descendants'?: boolean;
     'is_pinned'?: boolean;
+    'metadata_pending'?: boolean;
     'models'?: Array<string>;
     'name'?: string;
     'parent_conversation_id'?: string | null;
@@ -863,6 +885,7 @@ export interface ConversationDetailItem {
     'source_history_id'?: string | null;
     'source_seq'?: number | null;
     'thinking_depth'?: ConversationDetailItemThinkingDepthEnum;
+    'title_revision'?: number;
     'total_feedback_like'?: number;
     'total_feedback_unlike'?: number;
     'update_time'?: string;
@@ -988,6 +1011,7 @@ export interface ConversationItem {
     'fork_origin'?: ConversationForkOrigin | null;
     'has_fork_descendants'?: boolean;
     'is_pinned'?: boolean;
+    'metadata_pending'?: boolean;
     'models'?: Array<string>;
     'name'?: string;
     'parent_conversation_id'?: string | null;
@@ -998,6 +1022,7 @@ export interface ConversationItem {
     'relation_type'?: ConversationItemRelationTypeEnum;
     'search_config'?: object;
     'thinking_depth'?: ConversationItemThinkingDepthEnum;
+    'title_revision'?: number;
     'total_feedback_like'?: number;
     'total_feedback_unlike'?: number;
     'update_time'?: string;
@@ -1041,6 +1066,32 @@ export interface ConversationListResponse {
     'next_page_token'?: string;
     'total_size'?: number;
 }
+export interface ConversationOpeningState {
+    'batch': ConversationOpeningStateBatch;
+    'completed': number;
+    'failed': number;
+    'pending': number;
+    'revision': number;
+    'skipped': number;
+    'unprocessed': number;
+}
+export interface ConversationOpeningStateBatch {
+    'id'?: string;
+    'scan_complete'?: boolean;
+    'scanned'?: number;
+    'status'?: ConversationOpeningStateBatchStatusEnum;
+}
+
+export const ConversationOpeningStateBatchStatusEnum = {
+    Idle: 'idle',
+    Running: 'running',
+    Paused: 'paused',
+    Done: 'done',
+    Failed: 'failed'
+} as const;
+
+export type ConversationOpeningStateBatchStatusEnum = typeof ConversationOpeningStateBatchStatusEnum[keyof typeof ConversationOpeningStateBatchStatusEnum];
+
 export interface ConversationPinResponse {
     'conversation_id': string;
     'is_pinned': boolean;
@@ -10174,6 +10225,71 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          *
+         * @summary Conversation metadata progress
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        apiCoreConversationsMetadataBackfillGet: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/api/core/conversations/metadata-backfill`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         *
+         * @summary Start, pause, resume or retry conversation metadata backfill
+         * @param {ApiCoreConversationsMetadataBackfillPostRequest} apiCoreConversationsMetadataBackfillPostRequest
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        apiCoreConversationsMetadataBackfillPost: async (apiCoreConversationsMetadataBackfillPostRequest: ApiCoreConversationsMetadataBackfillPostRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'apiCoreConversationsMetadataBackfillPostRequest' is not null or undefined
+            assertParamExists('apiCoreConversationsMetadataBackfillPost', 'apiCoreConversationsMetadataBackfillPostRequest', apiCoreConversationsMetadataBackfillPostRequest)
+            const localVarPath = `/api/core/conversations/metadata-backfill`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(apiCoreConversationsMetadataBackfillPostRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         *
          * @summary PATCH /conversations/{name}:ask-answers
          * @param {string} name
          * @param {*} [options] Override http request option.
@@ -10355,6 +10471,45 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         *
+         * @summary Rename conversation with title revision protection
+         * @param {string} name
+         * @param {ApiCoreConversationsNameTitlePatchRequest} apiCoreConversationsNameTitlePatchRequest
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        apiCoreConversationsNameTitlePatch: async (name: string, apiCoreConversationsNameTitlePatchRequest: ApiCoreConversationsNameTitlePatchRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'name' is not null or undefined
+            assertParamExists('apiCoreConversationsNameTitlePatch', 'name', name)
+            // verify required parameter 'apiCoreConversationsNameTitlePatchRequest' is not null or undefined
+            assertParamExists('apiCoreConversationsNameTitlePatch', 'apiCoreConversationsNameTitlePatchRequest', apiCoreConversationsNameTitlePatchRequest)
+            const localVarPath = `/api/core/conversations/{name}/title`
+                .replace(`{${"name"}}`, encodeURIComponent(String(name)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PATCH', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(apiCoreConversationsNameTitlePatchRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -17645,6 +17800,31 @@ export const DefaultApiFp = function(configuration?: Configuration) {
         },
         /**
          *
+         * @summary Conversation metadata progress
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async apiCoreConversationsMetadataBackfillGet(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ConversationOpeningState>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiCoreConversationsMetadataBackfillGet(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['DefaultApi.apiCoreConversationsMetadataBackfillGet']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         *
+         * @summary Start, pause, resume or retry conversation metadata backfill
+         * @param {ApiCoreConversationsMetadataBackfillPostRequest} apiCoreConversationsMetadataBackfillPostRequest
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async apiCoreConversationsMetadataBackfillPost(apiCoreConversationsMetadataBackfillPostRequest: ApiCoreConversationsMetadataBackfillPostRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ConversationOpeningState>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiCoreConversationsMetadataBackfillPost(apiCoreConversationsMetadataBackfillPostRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['DefaultApi.apiCoreConversationsMetadataBackfillPost']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         *
          * @summary PATCH /conversations/{name}:ask-answers
          * @param {string} name
          * @param {*} [options] Override http request option.
@@ -17710,6 +17890,20 @@ export const DefaultApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.apiCoreConversationsNameHistoryGet(name, anchorHistoryId, anchorPageToken, pageSize, pageToken, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['DefaultApi.apiCoreConversationsNameHistoryGet']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         *
+         * @summary Rename conversation with title revision protection
+         * @param {string} name
+         * @param {ApiCoreConversationsNameTitlePatchRequest} apiCoreConversationsNameTitlePatchRequest
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async apiCoreConversationsNameTitlePatch(name: string, apiCoreConversationsNameTitlePatchRequest: ApiCoreConversationsNameTitlePatchRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ApiCoreConversationsNameTitlePatch200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.apiCoreConversationsNameTitlePatch(name, apiCoreConversationsNameTitlePatchRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['DefaultApi.apiCoreConversationsNameTitlePatch']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -20723,6 +20917,25 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          *
+         * @summary Conversation metadata progress
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        apiCoreConversationsMetadataBackfillGet(options?: RawAxiosRequestConfig): AxiosPromise<ConversationOpeningState> {
+            return localVarFp.apiCoreConversationsMetadataBackfillGet(options).then((request) => request(axios, basePath));
+        },
+        /**
+         *
+         * @summary Start, pause, resume or retry conversation metadata backfill
+         * @param {DefaultApiApiCoreConversationsMetadataBackfillPostRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        apiCoreConversationsMetadataBackfillPost(requestParameters: DefaultApiApiCoreConversationsMetadataBackfillPostRequest, options?: RawAxiosRequestConfig): AxiosPromise<ConversationOpeningState> {
+            return localVarFp.apiCoreConversationsMetadataBackfillPost(requestParameters.apiCoreConversationsMetadataBackfillPostRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         *
          * @summary PATCH /conversations/{name}:ask-answers
          * @param {DefaultApiApiCoreConversationsNameAskAnswersPatchRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -20770,6 +20983,16 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          */
         apiCoreConversationsNameHistoryGet(requestParameters: DefaultApiApiCoreConversationsNameHistoryGetRequest, options?: RawAxiosRequestConfig): AxiosPromise<ConversationHistoryListResponse> {
             return localVarFp.apiCoreConversationsNameHistoryGet(requestParameters.name, requestParameters.anchorHistoryId, requestParameters.anchorPageToken, requestParameters.pageSize, requestParameters.pageToken, options).then((request) => request(axios, basePath));
+        },
+        /**
+         *
+         * @summary Rename conversation with title revision protection
+         * @param {DefaultApiApiCoreConversationsNameTitlePatchRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        apiCoreConversationsNameTitlePatch(requestParameters: DefaultApiApiCoreConversationsNameTitlePatchRequest, options?: RawAxiosRequestConfig): AxiosPromise<ApiCoreConversationsNameTitlePatch200Response> {
+            return localVarFp.apiCoreConversationsNameTitlePatch(requestParameters.name, requestParameters.apiCoreConversationsNameTitlePatchRequest, options).then((request) => request(axios, basePath));
         },
         /**
          *
@@ -22904,6 +23127,13 @@ export interface DefaultApiApiCoreConversationsGetRequest {
 }
 
 /**
+ * Request parameters for apiCoreConversationsMetadataBackfillPost operation in DefaultApi.
+ */
+export interface DefaultApiApiCoreConversationsMetadataBackfillPostRequest {
+    readonly apiCoreConversationsMetadataBackfillPostRequest: ApiCoreConversationsMetadataBackfillPostRequest
+}
+
+/**
  * Request parameters for apiCoreConversationsNameAskAnswersPatch operation in DefaultApi.
  */
 export interface DefaultApiApiCoreConversationsNameAskAnswersPatchRequest {
@@ -22944,6 +23174,15 @@ export interface DefaultApiApiCoreConversationsNameHistoryGetRequest {
     readonly pageSize?: number
 
     readonly pageToken?: string
+}
+
+/**
+ * Request parameters for apiCoreConversationsNameTitlePatch operation in DefaultApi.
+ */
+export interface DefaultApiApiCoreConversationsNameTitlePatchRequest {
+    readonly name: string
+
+    readonly apiCoreConversationsNameTitlePatchRequest: ApiCoreConversationsNameTitlePatchRequest
 }
 
 /**
@@ -24627,6 +24866,27 @@ export class DefaultApi extends BaseAPI {
 
     /**
      *
+     * @summary Conversation metadata progress
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public apiCoreConversationsMetadataBackfillGet(options?: RawAxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).apiCoreConversationsMetadataBackfillGet(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     *
+     * @summary Start, pause, resume or retry conversation metadata backfill
+     * @param {DefaultApiApiCoreConversationsMetadataBackfillPostRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public apiCoreConversationsMetadataBackfillPost(requestParameters: DefaultApiApiCoreConversationsMetadataBackfillPostRequest, options?: RawAxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).apiCoreConversationsMetadataBackfillPost(requestParameters.apiCoreConversationsMetadataBackfillPostRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     *
      * @summary PATCH /conversations/{name}:ask-answers
      * @param {DefaultApiApiCoreConversationsNameAskAnswersPatchRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
@@ -24678,6 +24938,17 @@ export class DefaultApi extends BaseAPI {
      */
     public apiCoreConversationsNameHistoryGet(requestParameters: DefaultApiApiCoreConversationsNameHistoryGetRequest, options?: RawAxiosRequestConfig) {
         return DefaultApiFp(this.configuration).apiCoreConversationsNameHistoryGet(requestParameters.name, requestParameters.anchorHistoryId, requestParameters.anchorPageToken, requestParameters.pageSize, requestParameters.pageToken, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     *
+     * @summary Rename conversation with title revision protection
+     * @param {DefaultApiApiCoreConversationsNameTitlePatchRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public apiCoreConversationsNameTitlePatch(requestParameters: DefaultApiApiCoreConversationsNameTitlePatchRequest, options?: RawAxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).apiCoreConversationsNameTitlePatch(requestParameters.name, requestParameters.apiCoreConversationsNameTitlePatchRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

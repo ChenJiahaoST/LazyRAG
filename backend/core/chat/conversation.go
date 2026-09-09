@@ -165,17 +165,19 @@ func ChatConversations(w http.ResponseWriter, r *http.Request) {
 	if conv != nil {
 		displayName, _ = conv["display_name"].(string)
 	}
-	if displayName == "" {
-		var fusionInput []map[string]any
-		if in, ok := raw["input"].([]any); ok {
-			for _, it := range in {
-				if m, ok2 := it.(map[string]any); ok2 {
-					fusionInput = append(fusionInput, m)
-				}
+	var fusionInput []map[string]any
+	if in, ok := raw["input"].([]any); ok {
+		for _, it := range in {
+			if item, ok := it.(map[string]any); ok {
+				fusionInput = append(fusionInput, item)
 			}
 		}
-		displayName = GetDefaultDisplayName(convID, fusionInput)
 	}
+	defaultDisplayName := GetDefaultDisplayName(convID, fusionInput)
+	if displayName == "" {
+		displayName = defaultDisplayName
+	}
+
 	if len([]rune(displayName)) > maxConversationDisplayNameLength {
 		common.ReplyErr(w, "display_name too long", http.StatusBadRequest)
 		return
@@ -270,6 +272,12 @@ func ChatConversations(w http.ResponseWriter, r *http.Request) {
 	} else if value, ok := raw["initial_workflow_settings"].(map[string]any); ok {
 		initialConversationSettings = value
 	}
+	if explicitTitle, _ := conv["display_name"].(string); explicitTitle != "" && explicitTitle != defaultDisplayName {
+		if initialConversationSettings == nil {
+			initialConversationSettings = map[string]any{}
+		}
+		initialConversationSettings["display_name"] = explicitTitle
+	}
 	initialModelSelection, err := parseInitialChatModelSelection(raw)
 	if err != nil {
 		common.ReplyErr(w, err.Error(), http.StatusBadRequest)
@@ -288,6 +296,7 @@ func ChatConversations(w http.ResponseWriter, r *http.Request) {
 	requestedThinkingDepth, _ := raw["thinking_depth"].(string)
 
 	conversationRecord, seq, err := ensureConversation(r.Context(), db, convID, displayName, searchConfigJSON, modelsJSON, userID, userName, runInBackground, requestedThinkingDepth, initialConversationSettings, initialModelSelection)
+
 	if err != nil {
 		if errors.Is(err, errConversationUnavailable) {
 			common.ReplyErr(w, err.Error(), http.StatusNotFound)
@@ -1429,6 +1438,7 @@ func GetConversation(w http.ResponseWriter, r *http.Request) {
 		"name":                  "conversations/" + c.ID,
 		"conversation_id":       c.ID,
 		"display_name":          c.DisplayName,
+		"title_revision":        c.TitleRevision,
 		"search_config":         searchCfg,
 		"user":                  c.CreateUserName,
 		"chat_times":            c.ChatTimes,
@@ -1820,6 +1830,7 @@ func GetConversationDetail(w http.ResponseWriter, r *http.Request) {
 		"name":                  "conversations/" + c.ID,
 		"conversation_id":       c.ID,
 		"display_name":          c.DisplayName,
+		"title_revision":        c.TitleRevision,
 		"search_config":         searchCfg,
 		"user":                  c.CreateUserName,
 		"chat_times":            c.ChatTimes,
@@ -2281,6 +2292,15 @@ func ListConversations(w http.ResponseWriter, r *http.Request) {
 		common.ReplyErr(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	pendingIDs := []string{}
+	if err := db.Model(&orm.ConversationOpening{}).Where("conversation_id IN ? AND status IN ?", conversationIDs, []string{"pending", "running"}).Pluck("conversation_id", &pendingIDs).Error; err != nil {
+		common.ReplyErr(w, "load metadata state failed", 500)
+		return
+	}
+	metadataPending := map[string]bool{}
+	for _, id := range pendingIDs {
+		metadataPending[id] = true
+	}
 	parentNames := parentDisplayNames(r.Context(), db, userID, list)
 
 	items := make([]map[string]any, 0, len(list))
@@ -2306,6 +2326,8 @@ func ListConversations(w http.ResponseWriter, r *http.Request) {
 			"name":                  "conversations/" + c.ID,
 			"conversation_id":       c.ID,
 			"display_name":          c.DisplayName,
+			"title_revision":        c.TitleRevision,
+			"metadata_pending":      metadataPending[c.ID],
 			"source_type":           c.SourceType,
 			"source_dataset_id":     c.SourceDatasetID,
 			"source_document_id":    c.SourceDocumentID,
@@ -2457,6 +2479,9 @@ func SetChatHistory(w http.ResponseWriter, r *http.Request) {
 		forkReplyError(w, err)
 		return
 	}
+
+	defer notifyConversationOpening(db, selected.ConversationID)
+
 	writeConversationJSON(w, http.StatusOK, map[string]any{"history_id": body.SetHistoryID})
 }
 
