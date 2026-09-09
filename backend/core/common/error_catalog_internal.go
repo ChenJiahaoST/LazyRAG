@@ -578,6 +578,8 @@ func init() {
 	registerAdditionalErrorPattern("update task progress task=%s", "Internal server error", http.StatusInternalServerError, 2000000)
 	registerAdditionalErrorPattern("complete task=%s", "Internal server error", http.StatusInternalServerError, 2000000)
 	registerAdditionalErrorPattern("fail task=%s", "Internal server error", http.StatusInternalServerError, 2000000)
+	registerAdditionalErrorPattern("prepare subagent run task=%s", "Internal server error", http.StatusInternalServerError, 2000000)
+	registerAdditionalErrorPattern("append task step task=%s role=%s", "Internal server error", http.StatusInternalServerError, 2000000)
 	registerAdditionalErrorPattern("invalid sources snapshot", "Internal server error", http.StatusInternalServerError, 2000000)
 	registerAdditionalErrorPattern("save writing subtasks task=%s", "Internal server error", http.StatusInternalServerError, 2000000)
 	registerAdditionalErrorPattern("invalid writing subtasks snapshot", "Internal server error", http.StatusInternalServerError, 2000000)
